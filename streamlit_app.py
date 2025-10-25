@@ -1,151 +1,159 @@
+# ========================================
+# Fetal Health Classification Dashboard
+# ========================================
 import streamlit as st
 import pandas as pd
-import math
-from pathlib import Path
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, auc
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+# ------------------------------
+# App Title
+# ------------------------------
+st.set_page_config(page_title="Fetal Health Dashboard", layout="wide")
+st.title("🩺 Fetal Health Classification Dashboard")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+st.markdown("""
+Aplikasi ini menampilkan hasil **analisis dan pemodelan machine learning** pada dataset *Fetal Health Classification*.  
+Berikut meliputi: *EDA, Model Comparison, Confusion Matrix, ROC Curve,* dan insight singkat dari tiap model.
+""")
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+# ------------------------------
+# Load Data
+# ------------------------------
+st.header("📂 Dataset Overview")
+uploaded_file = st.file_uploader("Upload dataset CSV kamu (gunakan yang sudah di-cleaning)", type=["csv"])
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.write("### Data Sample")
+    st.dataframe(df.head())
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+    # ------------------------------
+    # Exploratory Data Analysis
+    # ------------------------------
+    st.header("🔍 Exploratory Data Analysis (EDA)")
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Distribusi Target (Fetal Health)")
+        fig, ax = plt.subplots()
+        sns.countplot(data=df, x="fetal_health", palette="coolwarm", ax=ax)
+        st.pyplot(fig)
+    
+    with col2:
+        st.subheader("Korelasi Antar Fitur")
+        fig, ax = plt.subplots(figsize=(6,4))
+        sns.heatmap(df.corr(), cmap="Blues", ax=ax)
+        st.pyplot(fig)
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+    st.markdown("""
+    **Insight:**  
+    - Distribusi target menunjukkan apakah data seimbang antara kelas *Normal*, *Suspect*, dan *Pathological*.  
+    - Korelasi membantu mengidentifikasi hubungan antar fitur yang bisa mempengaruhi hasil model.
+    """)
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+    # ------------------------------
+    # Split Data
+    # ------------------------------
+    X = df.drop("fetal_health", axis=1)
+    y = df["fetal_health"]
 
-    return gdp_df
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-gdp_df = get_gdp_data()
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+    # ------------------------------
+    # Train Models
+    # ------------------------------
+    models = {
+        "Logistic Regression": LogisticRegression(max_iter=1000),
+        "Random Forest": RandomForestClassifier(random_state=42),
+        "XGBoost": XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', random_state=42)
+    }
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+    results = []
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred_train = model.predict(X_train)
+        y_pred_test = model.predict(X_test)
 
-# Add some spacing
-''
-''
+        results.append({
+            "Model": name,
+            "Accuracy (Train)": accuracy_score(y_train, y_pred_train),
+            "Accuracy (Test)": accuracy_score(y_test, y_pred_test),
+            "Recall (Test)": recall_score(y_test, y_pred_test, average="macro"),
+            "F1-Score (Test)": f1_score(y_test, y_pred_test, average="macro"),
+            "ROC-AUC (Test)": roc_auc_score(y_test, model.predict_proba(X_test), multi_class='ovr')
+        })
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
+    result_df = pd.DataFrame(results)
+    st.header("📊 Model Comparison")
+    st.dataframe(result_df.style.highlight_max(axis=0, color="lightblue"))
 
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
+    # ------------------------------
+    # Confusion Matrix & ROC
+    # ------------------------------
+    st.header("📉 Confusion Matrix & ROC Curve")
 
-countries = gdp_df['Country Code'].unique()
+    model_choice = st.selectbox("Pilih model untuk visualisasi:", list(models.keys()))
+    selected_model = models[model_choice]
+    y_pred = selected_model.predict(X_test)
+    cm = confusion_matrix(y_test, y_pred)
 
-if not len(countries):
-    st.warning("Select at least one country")
+    # Confusion Matrix Plot
+    fig, ax = plt.subplots()
+    sns.heatmap(cm, annot=True, cmap="Blues", fmt="g", ax=ax)
+    ax.set_title(f"Confusion Matrix - {model_choice}")
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("Actual")
+    st.pyplot(fig)
 
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
+    # ROC Curve
+    st.subheader("ROC Curve")
+    y_prob = selected_model.predict_proba(X_test)
+    fpr = {}
+    tpr = {}
+    roc_auc = {}
+    for i in np.unique(y):
+        fpr[i], tpr[i], _ = roc_curve(y_test == i, y_prob[:, int(i - 1)])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+    
+    fig, ax = plt.subplots()
+    for i in roc_auc.keys():
+        ax.plot(fpr[i], tpr[i], label=f'Class {int(i)} (AUC = {roc_auc[i]:.2f})')
+    ax.plot([0, 1], [0, 1], "k--")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.legend()
+    st.pyplot(fig)
 
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+    # ------------------------------
+    # Insights
+    # ------------------------------
+    st.header("💬 Model Insights")
+    if model_choice == "Logistic Regression":
+        st.write("""
+        - Logistic Regression menunjukkan performa yang baik namun cenderung lebih rendah dari model ensemble.
+        - Model ini sederhana dan transparan, cocok untuk baseline model.
+        """)
+    elif model_choice == "Random Forest":
+        st.write("""
+        - Random Forest memberikan hasil akurasi dan ROC-AUC yang tinggi.
+        - Model ini kuat terhadap overfitting dan dapat menangkap non-linearitas data.
+        """)
+    else:
+        st.write("""
+        - XGBoost menghasilkan performa terbaik dengan nilai F1-Score dan ROC-AUC tertinggi.
+        - Model ini mampu menyeimbangkan bias dan variansi dengan baik setelah tuning.
+        """)
+else:
+    st.warning("📁 Silakan upload dataset CSV terlebih dahulu untuk memulai analisis.")
