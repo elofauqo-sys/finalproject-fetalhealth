@@ -65,6 +65,12 @@ if uploaded_file is not None:
     X = df.drop("fetal_health", axis=1)
     y = df["fetal_health"]
 
+    # Pastikan target berupa integer dan dimulai dari 0
+y = y.astype(int)
+if y.min() == 1:
+    y = y - 1
+
+
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
