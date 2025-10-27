@@ -1,8 +1,8 @@
-# :earth_americas: GDP dashboard template
+# :Fetal Health Classification using Machine Learning
 
-A simple Streamlit app showing the GDP of different countries in the world.
+Proyek ini bertujuan untuk memprediksi kondisi kesehatan janin berdasarkan data Cardiotocography (CTG).
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://finpro-elofauq0.streamlit.app/)
 
 ### How to run it on your own machine
 
