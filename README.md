@@ -1,6 +1,6 @@
 # Fetal Health Classification using Machine Learning
 
-<img src = "https://sl.bing.net/gzJZvfHCxfE">
+<img src = "https://akcdn.detik.net.id/community/media/visual/2022/12/02/cardiotocography-atau-ctg-1_169.jpeg?w=620">
 
 Kesehatan janin selama masa kehamilan merupakan faktor penting untuk menjamin keselamatan ibu dan bayi.
 Dalam praktik medis, dokter kandungan biasanya menggunakan alat Cardiotocography (CTG) untuk memantau kondisi janin.
