@@ -1,5 +1,7 @@
 # Fetal Health Classification using Machine Learning
 
+<img src = "https://sl.bing.net/gzJZvfHCxfE">
+
 Kesehatan janin selama masa kehamilan merupakan faktor penting untuk menjamin keselamatan ibu dan bayi.
 Dalam praktik medis, dokter kandungan biasanya menggunakan alat Cardiotocography (CTG) untuk memantau kondisi janin.
 CTG merekam detak jantung janin (fetal heart rate) dan aktivitas rahim (uterine contractions) untuk mendeteksi tanda-tanda stres atau gangguan pada janin.
